@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Happy Diwali ✨</title>
+  <meta name="theme-color" content="#0a0a0a" />
+  <style>
+    :root{
+      --bg:#0a0a0a;             /* black */
+      --card:#1a1a1a;           /* dark card */
+      --accent:#FFC107;         /* yellow */
+      --accent-2:#FF69B4;       /* pink */
+      --text:#F8F7FF;           /* near-white */
+      --muted:#FFB6C1;          /* soft pink */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color:var(--text);
+      background: var(--bg);
+      overflow-x:hidden;
+    }
+
+    /* collage for "sad" */
+    .gallery{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap:10px; margin-top:10px;
+    }
+    .gallery img, .gallery video{
+      display:block;
+      width:100%; aspect-ratio: 4/3; object-fit:cover;
+      border-radius:12px; background:#111;
+      box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    }
+
+    .wrap{max-width: 820px; margin:0 auto; padding: 20px 16px 80px}
+    header{ text-align:center; padding:24px 10px 12px}
+    h1{ font-size: clamp(28px, 6vw, 44px); line-height:1.15; margin:10px 0; letter-spacing:.3px; }
+    .sub{ color: var(--muted); font-size: clamp(14px, 3.6vw, 18px); letter-spacing:.2px }
+
+    /* card */
+    .card{
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.35)
+    }
+    .hero{ display:flex; gap:16px; align-items:center; justify-content:center; padding:10px 10px 18px }
+    .hero svg{ width:min(20vw,90px); height:auto; filter: drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+
+    .quote{ font-size: clamp(16px, 4.5vw, 22px); text-align:center; margin: 12px 8px; }
+    .quote small{ display:block; margin-top:8px; color:var(--muted); font-size: 0.9em }
+
+    .row{ display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-top:16px }
+    @media (min-width:560px){ .row{ grid-template-columns: repeat(3, 1fr) } }
+
+    button{ -webkit-appearance:none; appearance:none; cursor:pointer; font-weight:600; font-size:14px; line-height:1; color:var(--text); background-color: transparent; border:1px solid rgba(60,56,47,0.25); padding:12px 16px; border-radius:9999px; transition: transform .08s ease, box-shadow .25s ease, filter .2s ease; background-clip: padding-box }
+    button:hover{ box-shadow: 0 6px 18px rgba(0,0,0,.35); filter: brightness(1.04);}
+    button:active{ transform: scale(.98); filter: brightness(1.03);}
+    .primary{ background-color: transparent; color: var(--accent); border-color: var(--accent); }
+    .ghost{ background-color: transparent; border-color: rgba(60,56,47,.28); color: var(--text) }
+
+    /* mood output */
+    .mood-area{ margin-top:18px }
+    .mood-card{ display:none; opacity:0; transform: translateY(8px); background: var(--card); border:1px solid rgba(255,255,255,0.12); border-radius:16px; padding:14px }
+    .mood-card.show{ display:block; animation: pop .28s ease-out forwards }
+    @keyframes pop{ to{ opacity:1; transform: translateY(0) } }
+
+    /* mood pills */
+    .row button.mood{ border-radius:9999px; border-width:1px; padding:10px 14px; background: transparent; }
+    .row button.mood:nth-child(odd){ border-color: var(--accent); color: var(--text) }
+    .row button.mood:nth-child(even){ border-color: var(--accent-2); color: var(--text) }
+    .row button.mood.active{ box-shadow: 0 0 0 2px rgba(255,255,255,0.08) inset; }
+
+    .fineprint{ color: var(--muted); font-size: 12px; text-align:center; margin-top: 22px }
+
+    /* tiny fireworks */
+    .spark{ position:fixed; pointer-events:none; width:4px; height:4px; border-radius:50%; background: var(--accent-2);
+            box-shadow: 0 0 10px 2px rgba(232,201,108,.55); opacity:0; animation: spark 900ms ease-out forwards }
+    @keyframes spark{ 0%{opacity:1; transform: translate(-50%, -50%) scale(1)} 100%{opacity:0; transform: translate(var(--dx), var(--dy)) scale(0.2)} }
+
+    /* floating sparkles canvas */
+    #bgFx{ position:fixed; inset:0; z-index:-1; opacity:.15; }
+
+    /* full-screen player overlay */
+    #player{
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000;
+      display: none; /* toggled by .show */
+      align-items: center; justify-content: center; gap: 14px;
+      flex-direction: column; padding: 16px;
+    }
+    #player.show { display: flex; }
+
+    #player video{
+      width: 100%; max-width: 920px; max-height: 78vh;
+      border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+      background:#000;
+    }
+
+    /* Floating Home button – always visible above the video */
+    #player .home-fab{
+      position:absolute; top:12px; right:12px; z-index:10000;
+      -webkit-appearance:none; appearance:none; cursor:pointer;
+      font-weight:700; font-size:14px; line-height:1;
+      color:#0a0a0a; background: var(--accent);
+      border: 0; padding: 10px 14px; border-radius: 9999px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.35);
+    }
+  </style>
+</head>
+<body>
+  <!-- full-screen player overlay -->
+  <div id="player" aria-hidden="true">
+    <button class="home-fab" onclick="closePlayer()">start page pe le jayega</button>
+    <video id="fullVid"
+           src="assets/happyDiwali.mp4"
+           preload="auto"
+           controls playsinline autoplay loop></video>
+  </div>
+
+  <canvas id="bgFx"></canvas>
+
+  <div class="wrap">
+    <header>
+      <h1>Happy Diwali, <span id="nameSpan">Pretty🌸</span></h1>
+      <div class="sub">आपके घर में दीपों का उजाला और दिलों में प्यार का प्रकाश हमेशा बना रहे। शुभ दीपावली!</div>
+    </header>
+
+    <section class="card">
+      <div class="hero">
+        <svg viewBox="0 0 120 120" aria-hidden="true" role="img">
+          <ellipse cx="60" cy="85" rx="42" ry="13" fill="#d7c05f" opacity="0.40"/>
+          <path d="M20 70c10 18 32 24 40 24s30-6 40-24c-6 2-15 3-40 3-25 0-34-1-40-3z" fill="#8a3a5a" stroke="#bf6d9d" stroke-opacity=".45"/>
+          <path d="M60 22c-8 8-12 17-12 24 0 10 8 18 12 18s12-8 12-18c0-7-4-16-12-24z" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div class="quote" id="quoteBox">✨ Loading a little kindness...</div>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:8px">
+        <button class="ghost" id="newQuoteBtn" aria-label="Show another quote">hera pheri!</button>
+        <button class="primary" id="shareBtn" aria-label="Share link">Share</button>
+      </div>
+
+      <div class="mood-area">
+        <h3 style="margin:14px 6px 8px; font-size:18px; color:var(--muted)">choooose karoooooo</h3>
+        <div class="row" role="list">
+          <button class="mood" data-key="happy" role="listitem">khush hun</button>
+          <button class="mood" data-key="sad" role="listitem">dukhi hun</button>
+          <button class="mood" data-key="stressed" role="listitem">mathaa phatt raha h, tanng matt karo hamko.</button>
+          <button class="mood" data-key="bored" role="listitem">auubbb-yaa-ill h</button>
+          <button class="mood" data-key="surprise" role="listitem">sar par ice doooo</button>
+        </div>
+
+        <div id="moodOut" class="mood-card" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- <p class="fineprint">Tip: Add <code>?name=Anisha</code> to personalize the greeting. Slideshow pulls from <code>assets/priti/1.jpg..21.jpg</code>. ✨</p> -->
+  </div>
+
+  <script>
+    // -------- CONFIG --------
+    // SAD mood media (your assets are directly under /assets)
+    const SAD_IMAGES = Array.from({length: 10}, (_, i) => `assets/${i+1}.jpg`);
+    const SAD_VIDEO  = 'assets/swamiPriti.MOV';
+
+    const RESTORE_LAST = false;
+    const PRITI_IMAGES = [
+      '1.jpg','2.jpg','3.jpg','4.jpg','5.jpg',
+      '6.jpg','7.jpg','8.jpg','9.jpg','10.jpg',
+      '11.jpg','12.jpg','13.jpg','14.jpg','15.jpg',
+      '16.jpg','17.jpg','18.jpg','19.jpg','20.jpg',
+      '21.jpg'
+    ].map(n => `assets/priti/${n}`);
+
+    // --- Personalize via URL param ---
+    const params = new URLSearchParams(location.search);
+    const who = (params.get('name') || '').trim();
+    const nameSpan = document.getElementById('nameSpan');
+    if(who){ nameSpan.textContent = who + ' ✨'; }
+
+    // --- Quotes ---
+    const QUOTES = [
+      "oh helllooo.",
+      "kitni mast insaaan hun na.",
+      "May your heart be as bright as the diyas tonight.",
+      "You are the spark that makes ordinary moments glow.",
+      "Wishing you and your family joy that lingers and peace that stays.",
+      "Let your light be louder than any doubt.",
+      "Good things find you when your heart is kind.",
+      "You’re doing so well. one gentle step at a time.",
+      "Here’s to sweet laughter and soft beginnings.",
+      "Little wins count. Celebrate them."
+    ];
+
+    const quoteBox = document.getElementById('quoteBox');
+    const newQuoteBtn = document.getElementById('newQuoteBtn');
+
+    function pickQuote(){
+      let last = localStorage.getItem('lastQuote');
+      let q;
+      for(let i=0;i<6;i++){
+        q = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+        if(q!==last) break;
+      }
+      localStorage.setItem('lastQuote', q);
+      quoteBox.innerHTML = `“${q}” <small>[kuch toh aal baal paste kiye h, maafi from 9000km (":]</small>`;
+      burst();
+    }
+    newQuoteBtn.addEventListener('click', pickQuote);
+    pickQuote();
+
+    // --- Mood logic ---
+    const moodOut = document.getElementById('moodOut');
+    const MOODS = {
+      happy: {
+        title: 'reeeyyyy bihariii',
+        html: `
+            <div style="margin-top:14px; text-align:center">
+            <img
+                src="assets/chappal.jpeg"
+                alt="chappal image"
+                style="width:100%; height:auto; max-height:320px; object-fit:contain; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)"
+            />
+            <p>kaa ji? apne apne mei khush hogi? -.- . hamko bhi batao. hamare life mei khushi ki kami h. ek khushi naaamak ladki bhi chalegi life mei, jus letting you know!!!</p>
+            </div>
+        `
+       },
+
+      sad: {
+        title: 'inko nihaar lo',
+        html: `
+          <p>as you say, sara mood thik ho jayega.</p>
+          <div id="sadGal" class="gallery" aria-label="comfort collage"></div>
+
+          <div class="sad-video-wrap" style="margin-top:12px">
+            <video id="sadVid"
+              src="${SAD_VIDEO}"
+              loop playsinline controls
+              style="width:100%; max-height:60vh; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)"></video>
+          </div>`
+      },
+      stressed: {
+        title: 'thora break lo, breathe karroooo, chaloooo. with me',
+        html: `<p>yeh karo, pehele inhale karo, phir start dabana phir hold and last mei exhale. samjhi beta? aur kabhi bhi woh high level wala stress ho, and you dont know where to go, whom to share with. toh, ham idhr h, thik? therapist toh nhi h, na ekdum chaddi baddi. but i will try to be there and lend my ears.  (":</p>
+              <div id="breath" style="margin:10px 0; display:flex; align-items:center; gap:12px">
+                <div id="bubble" style="width:46px; height:46px; border-radius:50%; background:var(--accent); opacity:.9"></div>
+                <span id="phase">inhale…</span>
+              </div>
+              <button class="ghost" onclick="breathing()">start</button>`
+      },
+        bored: {
+        title: 'kuch bhi funzzz (idk why xD)',
+        html: `
+            <p>tap crow diyas ko. if it glows, toh make a wish ✨</p>
+            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap">
+            ${[...Array(6)].map(()=>`<button class="mDiya" onclick="diyaPlay(this)">🪔</button>`).join('')}
+            </div>
+
+            <p>bittz, tumko IFS mile ya na mile, agar bored ho toh tumhi UPSC baith jao abhiye hi (coz baad mei toh aise hi baithna h xD). phir tumhare paas toh dates ki line hogi (hihihihi). toh tum jinko minus karogi, unko hamse milwa dena. bujhi toh?</p>
+            <!-- Show bored.jpg below the game -->
+            <div style="margin-top:14px; text-align:center">
+            <img src="assets/bored.jpg" 
+                alt="bored mood image"
+                style="width:100%; height:auto; max-height:320px; object-fit:contain; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)" />
+            </div>
+        `
+        },
+
+        surprise: {
+        title: 'movie dekhooooo. dekhonaaaaa! (cheekbones star performer h bdw)',
+        html: `<div class="media-shell">
+                <div id="ssStage" style="
+                    display:flex; align-items:center; justify-content:center; width:100%;
+                    background:rgba(60,56,47,.06); border:1px solid rgba(60,56,47,.18);
+                    border-radius:12px; padding:8px;">
+                    <img id="ssImg" alt="photo" style="
+                    max-width:100%; height:auto; max-height:70vh;
+                    object-fit:contain; display:none; border-radius:10px;" />
+                    <div id="ssEmpty" style="position:absolute; left:-9999px; top:-9999px;">loading photos…</div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+                    <button class="ghost" onclick="toggleSlidePlay()" id="ssPlayBtn">pause</button>
+                </div>
+                <small style="display:block; margin-top:6px; color:var(--muted)">
+                        [ismei kuch toh gaana bg mei dalne k mann h. but samajh nhi paaye ki old is gold mei se daale ki indie kuch. ab tumse puch ke hi daaldengey! xD
+                </small>
+                </div>`
+        }
+    };
+
+    function renderSadGallery(){
+      const gal = document.getElementById('sadGal');
+      if(!gal) return;
+      gal.innerHTML = '';
+      SAD_IMAGES.forEach(src => {
+        const img = new Image();
+        img.src = src;
+        img.alt = 'memory photo';
+        gal.appendChild(img);
+      });
+    }
+
+    function wireSadVideo(){
+        const v = document.getElementById('sadVid');
+        if(!v) return;
+
+        // sound first, then load+play
+        v.muted = false;
+        v.volume = 1;
+        v.setAttribute('playsinline','');
+        v.setAttribute('webkit-playsinline','');
+
+        v.pause();
+        v.currentTime = 0;
+        v.load();
+        // call play right after render (user clicked the mood)
+        setTimeout(() => { v.play().catch(()=>{}); }, 0);
+    }
+
+    function showMood(key){
+      document.querySelectorAll('.mood').forEach(b=> b.classList.remove('active'));
+      const trigger = document.querySelector(`.mood[data-key="${key}"]`);
+      if(trigger) trigger.classList.add('active');
+
+      const m = MOODS[key] || MOODS['happy'];
+      const BORDER = { happy:'#FFC107', sad:'#FF69B4', stressed:'#9E9E9E', bored:'#FFC107', surprise:'#FF69B4' };
+
+      moodOut.style.background = 'var(--card)';
+      moodOut.style.boxShadow = '0 8px 24px rgba(0,0,0,.35)';
+      moodOut.style.border = '1px solid ' + (BORDER[key] || 'rgba(0,0,0,.12)');
+
+      const PROCEED = `
+        <div class="proceed" style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+          <span style="font-weight:600; color:var(--muted)">sunnooooo bitttuuu, do you want to proceed further? (apne rickss pe, thik na?)</span>
+          <button class="primary" onclick="proceedAction('${key}')">yes</button>
+          <button class="ghost" onclick="alert('bhakk, try again agle diwali -.-')">no</button>
+        </div>`;
+
+      moodOut.innerHTML = `<h4 style="margin:0 0 6px">${m.title}</h4>` + m.html + PROCEED;
+      moodOut.classList.add('show');
+
+      if(key==='sad'){ renderSadGallery(); wireSadVideo(); }
+
+      if(key==='surprise'){
+        initSlides();
+        if(!SS.timer){ toggleSlidePlay(); }
+        const b = document.getElementById('ssPlayBtn'); if(b) b.textContent = 'pause';
+      }
+
+      if(RESTORE_LAST){ localStorage.setItem('lastMood', key); }
+      setTimeout(()=>moodOut.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+    }
+
+    document.querySelectorAll('.mood').forEach(btn=>{
+      btn.addEventListener('click', ()=> showMood(btn.dataset.key));
+    });
+
+    // restore last mood (disabled by default)
+    if(RESTORE_LAST){
+      const lastMood = localStorage.getItem('lastMood');
+      if(lastMood){ showMood(lastMood); }
+    }
+
+    // share
+    const shareBtn = document.getElementById('shareBtn');
+    shareBtn.addEventListener('click', async ()=>{
+      const shareData = {
+        title: 'Happy Diwali',
+        text: `Lighting up your screen with a little joy${who?`, ${who}`:''} ✨`,
+        url: location.href
+      };
+      try{
+        if(navigator.share){ await navigator.share(shareData); }
+        else{ await navigator.clipboard.writeText(location.href); alert('Link copied!'); }
+      }catch(e){ console.log(e); }
+    });
+
+    // tiny fireworks (tap confetti)
+    function burst(n=10){
+      for(let i=0;i<n;i++){
+        const s = document.createElement('div');
+        s.className='spark';
+        const ang = Math.random() * Math.PI*2;
+        const r = 40 + Math.random()*80;
+        s.style.setProperty('--dx', `${Math.cos(ang)*r}px`);
+        s.style.setProperty('--dy', `${Math.sin(ang)*r}px`);
+        s.style.left = (window.innerWidth/2 + (Math.random()*120-60)) + 'px';
+        s.style.top = (140 + window.scrollY) + 'px';
+        document.body.appendChild(s);
+        setTimeout(()=>s.remove(), 920);
+      }
+    }
+
+    // subtle background sparkles
+    (function sparkles(){
+      const c = document.getElementById('bgFx');
+      const ctx = c.getContext('2d');
+      let W, H, prt=[];
+      function resize(){ W= c.width = innerWidth; H = c.height = innerHeight; }
+      addEventListener('resize', resize); resize();
+      const rootStyles = getComputedStyle(document.documentElement);
+      function withAlpha(hex, a){
+        const m = hex.trim().replace('#','');
+        const r = parseInt(m.substring(0,2),16), g = parseInt(m.substring(2,4),16), b = parseInt(m.substring(4,6),16);
+        return `rgba(${r},${g},${b},${a})`;
+      }
+      const COL1 = rootStyles.getPropertyValue('--accent-2') || '#d55193';
+      const COL2 = rootStyles.getPropertyValue('--accent') || '#e8c96c';
+      const COLORS = [ withAlpha(COL1, 0.9), withAlpha(COL2, 0.9) ];
+      const COUNT = Math.min(60, Math.floor((W*H)/26000));
+      for(let i=0;i<COUNT;i++){
+        prt.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.6 + 0.4,
+                   a: Math.random()*2*Math.PI, s: 0.15 + Math.random()*0.4,
+                   c: COLORS[Math.random()<0.5?0:1] });
+      }
+      function step(){
+        ctx.clearRect(0,0,W,H);
+        for(const p of prt){
+          p.y -= p.s; p.x += Math.cos(p.a)*0.1;
+          if(p.y < -10){ p.y = H+10; p.x = Math.random()*W; }
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.fillStyle = p.c; ctx.globalCompositeOperation = 'lighter'; ctx.fill();
+        }
+        requestAnimationFrame(step);
+      }
+      step();
+    })();
+
+    // proceed router for YES button (opens full-screen video)
+    function proceedAction(){
+      openPlayer();
+    }
+
+    // full-screen player helpers
+    function openPlayer(){
+    const ov = document.getElementById('player');
+    const v  = document.getElementById('fullVid');
+    if(!ov || !v) return;
+
+    // 🔇 STOP any mood videos currently playing (e.g., sad video)
+    document.querySelectorAll('video').forEach(videoEl => {
+        if (videoEl !== v) {
+        videoEl.pause();
+        videoEl.currentTime = 0;
+        }
+    });
+
+    ov.classList.add('show');
+
+    // Ensure sound is ON
+    v.pause();
+    v.muted = false; 
+    v.volume = 1;
+    v.currentTime = 0;
+
+    const p = v.play();
+    if(p && p.catch) p.catch(()=>{});
+
+    window.scrollTo({top: 0, behavior: 'auto'});
+    }
+
+
+    function closePlayer(){
+      const ov = document.getElementById('player');
+      const v  = document.getElementById('fullVid');
+      if(!ov || !v) return;
+      v.pause();
+      ov.classList.remove('show');
+
+      // Reset mood area
+      moodOut.classList.remove('show');
+      moodOut.innerHTML = '';
+
+      // Remove mood selection highlight
+      document.querySelectorAll('.mood').forEach(b => b.classList.remove('active'));
+
+      // Stop slideshow if running
+      if(SS.timer){ clearInterval(SS.timer); SS.timer = null; }
+
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    // slideshow helpers for SURPRISE (fixed assets/priti/)
+    let SS = { list: [], idx: 0, timer: null };
+
+    function initSlides(){
+      SS = { list: PRITI_IMAGES.slice(), idx: 0, timer: SS.timer };
+      renderSlide();
+    }
+
+    function renderSlide(){
+      const img = document.getElementById('ssImg');
+      const empty = document.getElementById('ssEmpty');
+      if(!img) return;
+      if(!SS.list.length){
+        if(empty) empty.textContent = 'no photos found in assets/priti/';
+        img.style.display='none';
+        return;
+      }
+      img.src = SS.list[SS.idx];
+      img.style.display='block';
+      if(empty) empty.style.display='none';
+    }
+
+    function nextSlide(){ if(!SS.list.length) return; SS.idx = (SS.idx+1)%SS.list.length; renderSlide(); }
+    function toggleSlidePlay(){
+      const btn = document.getElementById('ssPlayBtn');
+      if(SS.timer){
+        clearInterval(SS.timer); SS.timer=null; if(btn) btn.textContent='play';
+      } else {
+        if(!SS.list.length) return;
+        SS.timer = setInterval(nextSlide, 2200);
+        if(btn) btn.textContent='pause';
+      }
+    }
+
+    // breathing helper
+    function breathing(){
+      const bubble = document.getElementById('bubble');
+      const phase = document.getElementById('phase');
+      let step = 0;
+      const cycle = () => {
+        step = (step+1)%3;
+        if(step===0){ phase.textContent='inhale…'; bubble.style.transition='transform 4s ease'; bubble.style.transform='scale(1.25)'; }
+        if(step===1){ phase.textContent='hold…'; bubble.style.transition='transform 4s ease'; }
+        if(step===2){ phase.textContent='exhale…'; bubble.style.transition='transform 4s ease'; bubble.style.transform='scale(1)'; }
+      }
+      cycle();
+      let t= setInterval(cycle, 4000);
+      setTimeout(()=> clearInterval(t), 4*6*1000); // ~6 cycles
+    }
+
+    // playful diya
+    function diyaPlay(el){
+      const glow = Math.random() < 0.5;
+      el.textContent = glow ? '✨' : '🪔';
+      if(glow) setTimeout(()=>burst(12), 120);
+    }
+
+    // quick copy helper
+    function say(text){
+      if(navigator.clipboard){ navigator.clipboard.writeText(text).then(()=> alert('Copied! Paste in your chat 💬')); }
+      else{ prompt('Copy this message:', text); }
+    }
+  </script>
+</body>
+</html>
