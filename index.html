@@ -244,10 +244,11 @@
       if (document.hidden && SS.timer) toggleSlidePlay();
     });
 
-    // 3) Keyboard controls for slideshow (→ next, space play/pause)
+    // 3) Keyboard controls for slideshow (← prev, → next, space play/pause)
     document.addEventListener('keydown', (e) => {
       if (!document.getElementById('ssImg')) return;
       if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft')  prevSlide();
       if (e.key === ' ') { e.preventDefault(); toggleSlidePlay(); }
     });
 
@@ -320,7 +321,9 @@
                     <div id="ssEmpty" style="position:absolute; left:-9999px; top:-9999px;">loading photos…</div>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
-                    <button class="ghost" onclick="toggleSlidePlay()" id="ssPlayBtn">pause</button>
+                    <button class="ghost" onclick="prevSlide()" aria-label="Previous photo">prev</button>
+                    <button class="ghost" onclick="toggleSlidePlay()" id="ssPlayBtn" aria-label="Play/Pause slideshow">pause</button>
+                    <button class="ghost" onclick="nextSlide()" aria-label="Next photo">next</button>
                 </div>
                 <small style="display:block; margin-top:6px; color:var(--muted)">
                         [ismei kuch toh geet bg mei dalne k mann h. but samajh nhi paaye ki old is gold mei se daale ki indie kuch. ab tumse puch ke hi daaldengey! xD]<br><br>
@@ -537,6 +540,7 @@
     }
 
     function nextSlide(){ if(!SS.list.length) return; SS.idx = (SS.idx+1)%SS.list.length; renderSlide(); }
+    function prevSlide(){ if(!SS.list.length) return; SS.idx = (SS.idx-1+SS.list.length)%SS.list.length; renderSlide(); }
 
     function toggleSlidePlay(){
       const btn = document.getElementById('ssPlayBtn');
