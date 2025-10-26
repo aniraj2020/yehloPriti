@@ -111,9 +111,16 @@
       box-shadow: 0 6px 18px rgba(0,0,0,.35);
     }
 
-    /* slideshow image fade-in */
-    #ssImg{ transition: opacity .6s ease; opacity: 0; }
-    #ssImg.loaded{ opacity: 1; }
+    /* ✅ Crossfade for slideshow (A/B images) */
+    .ss{
+      opacity: 0;
+      transition: opacity .12s ease-in-out; /* faster = less black time */
+      pointer-events: none; /* avoid accidental drags */
+    }
+    .ss.show{ opacity: 1; }
+
+    /* Slightly soft stage so gaps aren’t harsh black */
+    #ssStage{ background:#111; }
   </style>
 </head>
 <body>
@@ -161,14 +168,19 @@
         <div id="moodOut" class="mood-card" aria-live="polite"></div>
       </div>
     </section>
+
+    <!-- <p class="fineprint">Tip: Add <code>?name=Anisha</code> to personalize the greeting. Slideshow pulls from <code>assets/priti/1.jpg..21.jpg</code>. ✨</p> -->
   </div>
 
   <script>
     // -------- CONFIG --------
+    // SAD mood media (your assets are directly under /assets)
     const SAD_IMAGES = Array.from({length: 10}, (_, i) => `assets/${i+1}.jpg`);
     const SAD_VIDEO  = 'assets/swamiPriti.MOV';
 
     const RESTORE_LAST = false;
+
+    // If some files are .JPG on disk, the loader will auto-swap case.
     const PRITI_IMAGES = [
       '1.jpg','2.jpg','3.jpg','4.JPG','5.jpg',
       '6.jpg','7.jpg','8.jpg','9.jpg','10.jpg',
@@ -246,7 +258,8 @@
 
     // 3) Keyboard controls for slideshow (← prev, → next, space play/pause)
     document.addEventListener('keydown', (e) => {
-      if (!document.getElementById('ssImg')) return;
+      // only if slideshow exists
+      if (!document.getElementById('ssImgA')) return;
       if (e.key === 'ArrowRight') nextSlide();
       if (e.key === 'ArrowLeft')  prevSlide();
       if (e.key === ' ') { e.preventDefault(); toggleSlidePlay(); }
@@ -300,9 +313,11 @@
             </div>
 
             <p>bittz, tumko IFS mile ya na mile, agar bored ho toh tumhi UPSC baith jao abhiye hi (coz baad mei toh aise hi baithna h xD). phir tumhare paas toh dates ki line hogi (hihihihi). toh tum jinko minus karogi, unko hamse milwa dena. bujhi toh?</p>
+            <!-- Show bored.jpg below the game -->
             <div style="margin-top:14px; text-align:center">
-              <img src="assets/bored.jpg" alt="bored mood image"
-                   style="width:100%; height:auto; max-height:320px; object-fit:contain; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)" />
+            <img src="assets/bored.jpg" 
+                alt="bored mood image"
+                style="width:100%; height:auto; max-height:320px; object-fit:contain; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)" />
             </div>
         `
       },
@@ -315,10 +330,12 @@
                     display:flex; align-items:center; justify-content:center; width:100%;
                     background:rgba(60,56,47,.06); border:1px solid rgba(60,56,47,.18);
                     border-radius:12px; padding:8px;">
-                    <div id="ssStage" style="position:relative; width:100%; display:flex; justify-content:center;">
-                      <img id="ssImgA" class="ss" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:12px; position:absolute; top:0; left:0;" />
-                      <img id="ssImgB" class="ss" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:12px; position:absolute; top:0; left:0;" />
-                    </div>
+                    <img id="ssImgA" class="ss" alt="photo A" style="
+                    max-width:100%; height:auto; max-height:70vh;
+                    object-fit:contain; position:absolute; inset:8px; border-radius:10px;" />
+                    <img id="ssImgB" class="ss" alt="photo B" style="
+                    max-width:100%; height:auto; max-height:70vh;
+                    object-fit:contain; position:absolute; inset:8px; border-radius:10px;" />
                     <div id="ssEmpty" style="position:absolute; left:-9999px; top:-9999px;">loading photos…</div>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
@@ -385,10 +402,9 @@
         initSlides();
         if(!SS.timer){ toggleSlidePlay(); }
         const b = document.getElementById('ssPlayBtn'); if(b) b.textContent = 'pause';
-        startSlideAudio();
-      } else {
-        stopSlideAudio();
-      }
+        startSlideAudio(); // start music with slideshow
+        } 
+        else {stopSlideAudio();}  // ensure music stops if user switches moods
 
       if(RESTORE_LAST){ localStorage.setItem('lastMood', key); }
       setTimeout(()=>moodOut.scrollIntoView({behavior:'smooth', block:'start'}), 50);
@@ -398,6 +414,7 @@
       btn.addEventListener('click', ()=> showMood(btn.dataset.key));
     });
 
+    // restore last mood (disabled by default)
     if(RESTORE_LAST){
       const lastMood = localStorage.getItem('lastMood');
       if(lastMood){ showMood(lastMood); }
@@ -469,28 +486,39 @@
     })();
 
     // proceed router for YES button (opens full-screen video)
-    function proceedAction(){ openPlayer(); }
+    function proceedAction(){
+      openPlayer();
+    }
 
     // full-screen player helpers
     function openPlayer(){
-      const ov = document.getElementById('player');
-      const v  = document.getElementById('fullVid');
-      if(!ov || !v) return;
+    const ov = document.getElementById('player');
+    const v  = document.getElementById('fullVid');
+    if(!ov || !v) return;
 
-      stopSlideAudio();
+    stopSlideAudio();
+    // STOP any mood videos currently playing (e.g., sad video)
+    document.querySelectorAll('video').forEach(videoEl => {
+        if (videoEl !== v) {
+        videoEl.pause();
+        videoEl.currentTime = 0;
+        }
+    });
 
-      // STOP any mood videos currently playing (e.g., sad video)
-      document.querySelectorAll('video').forEach(videoEl => {
-        if (videoEl !== v) { videoEl.pause(); videoEl.currentTime = 0; }
-      });
+    ov.classList.add('show');
 
-      ov.classList.add('show');
+    // Ensure sound is ON
+    v.pause();
+    v.muted = false; 
+    v.volume = 1;
+    v.currentTime = 0;
 
-      v.pause(); v.muted = false; v.volume = 1; v.currentTime = 0;
-      const p = v.play(); if(p && p.catch) p.catch(()=>{});
+    const p = v.play();
+    if(p && p.catch) p.catch(()=>{});
 
-      window.scrollTo({top: 0, behavior: 'auto'});
+    window.scrollTo({top: 0, behavior: 'auto'});
     }
+
 
     function closePlayer(){
       const ov = document.getElementById('player');
@@ -499,7 +527,8 @@
       v.pause();
       ov.classList.remove('show');
 
-      stopSlideAudio();
+    // also stop slideshow music
+    stopSlideAudio();
 
       // Reset mood area
       moodOut.classList.remove('show');
@@ -517,30 +546,47 @@
     // slideshow helpers for SURPRISE (fixed assets/priti/)
     let SS = { list: [], idx: 0, timer: null };
 
+    /* ✅ Important fix: first image appears immediately (no initial black) */
     function initSlides(){
       SS = { list: PRITI_IMAGES.slice(), idx: 0, timer: SS.timer };
-      renderSlide();
+      const imgA = document.getElementById('ssImgA');
+      const imgB = document.getElementById('ssImgB');
+      showingA = true;
+
+      imgA.classList.remove('show');
+      imgB.classList.remove('show');
+
+      imgA.decoding = 'async';
+      imgA.loading = 'lazy';
+      loadWithFallback(imgA, SS.list[0]);
+
+      // Show as soon as first image is ready
+      imgA.onload = () => imgA.classList.add('show');
+
+      // Ensure nextSlide goes to second photo
+      SS.idx = 0;
     }
 
+    // double-buffer crossfade state
     let showingA = true;
-    
+
     function renderSlide(){
       const imgA = document.getElementById('ssImgA');
       const imgB = document.getElementById('ssImgB');
-    
+
       const next = showingA ? imgB : imgA;
       const current = showingA ? imgA : imgB;
-    
+
       next.classList.remove('show');
       loadWithFallback(next, SS.list[SS.idx]);
-    
+
       next.onload = () => {
         next.classList.add('show');
         current.classList.remove('show');
         showingA = !showingA;
       };
     }
-    
+
     function nextSlide(){ if(!SS.list.length) return; SS.idx = (SS.idx+1)%SS.list.length; renderSlide(); }
     function prevSlide(){ if(!SS.list.length) return; SS.idx = (SS.idx-1+SS.list.length)%SS.list.length; renderSlide(); }
 
@@ -548,8 +594,9 @@
       const btn = document.getElementById('ssPlayBtn');
       const a = document.getElementById('ssAudio');
       if(SS.timer){
-        clearInterval(SS.timer); SS.timer=null;
-        if(a) a.pause();
+        clearInterval(SS.timer);
+        SS.timer=null;
+        if(a) a.pause();                 //  pause music when slideshow pauses
         if(btn) btn.textContent='play';
       } else {
         if(!SS.list.length) return;
