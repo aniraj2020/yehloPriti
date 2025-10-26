@@ -110,6 +110,10 @@
       border: 0; padding: 10px 14px; border-radius: 9999px;
       box-shadow: 0 6px 18px rgba(0,0,0,.35);
     }
+
+    /* slideshow image fade-in */
+    #ssImg{ transition: opacity .25s ease; opacity: 0; }
+    #ssImg.loaded{ opacity: 1; }
   </style>
 </head>
 <body>
@@ -157,13 +161,10 @@
         <div id="moodOut" class="mood-card" aria-live="polite"></div>
       </div>
     </section>
-
-    <!-- <p class="fineprint">Tip: Add <code>?name=Anisha</code> to personalize the greeting. Slideshow pulls from <code>assets/priti/1.jpg..21.jpg</code>. ✨</p> -->
   </div>
 
   <script>
     // -------- CONFIG --------
-    // SAD mood media (your assets are directly under /assets)
     const SAD_IMAGES = Array.from({length: 10}, (_, i) => `assets/${i+1}.jpg`);
     const SAD_VIDEO  = 'assets/swamiPriti.MOV';
 
@@ -225,6 +226,31 @@
     newQuoteBtn.addEventListener('click', pickQuote);
     pickQuote();
 
+    // -------- Helpers --------
+    // 1) Fallback loader: swaps .jpg <-> .JPG on error (for case-sensitive hosts)
+    function loadWithFallback(imgEl, src){
+      imgEl.loading = 'lazy';
+      imgEl.decoding = 'async';
+      imgEl.src = src;
+      imgEl.onerror = () => {
+        if (src.endsWith('.jpg')) imgEl.src = src.replace('.jpg','.JPG');
+        else if (src.endsWith('.JPG')) imgEl.src = src.replace('.JPG','.jpg');
+        imgEl.onerror = null;
+      };
+    }
+
+    // 2) Pause slideshow + audio when tab is background
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && SS.timer) toggleSlidePlay();
+    });
+
+    // 3) Keyboard controls for slideshow (→ next, space play/pause)
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('ssImg')) return;
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === ' ') { e.preventDefault(); toggleSlidePlay(); }
+    });
+
     // --- Mood logic ---
     const moodOut = document.getElementById('moodOut');
     const MOODS = {
@@ -264,7 +290,7 @@
               </div>
               <button class="ghost" onclick="breathing()">start</button>`
       },
-        bored: {
+      bored: {
         title: 'kuch bhi funzzz (idk why xD)',
         html: `
             <p>tap crow diyas ko. if it glows, toh make a wish ✨</p>
@@ -273,19 +299,18 @@
             </div>
 
             <p>bittz, tumko IFS mile ya na mile, agar bored ho toh tumhi UPSC baith jao abhiye hi (coz baad mei toh aise hi baithna h xD). phir tumhare paas toh dates ki line hogi (hihihihi). toh tum jinko minus karogi, unko hamse milwa dena. bujhi toh?</p>
-            <!-- Show bored.jpg below the game -->
             <div style="margin-top:14px; text-align:center">
-            <img src="assets/bored.jpg" 
-                alt="bored mood image"
-                style="width:100%; height:auto; max-height:320px; object-fit:contain; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)" />
+              <img src="assets/bored.jpg" alt="bored mood image"
+                   style="width:100%; height:auto; max-height:320px; object-fit:contain; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25)" />
             </div>
         `
-        },
+      },
 
-        surprise: {
+      surprise: {
         title: 'movie dekhooooo. dekhonaaaaa! (cheekbones star performer h bdw)',
         html: `<div class="media-shell">
                 <div id="ssStage" style="
+                    position:relative;
                     display:flex; align-items:center; justify-content:center; width:100%;
                     background:rgba(60,56,47,.06); border:1px solid rgba(60,56,47,.18);
                     border-radius:12px; padding:8px;">
@@ -300,11 +325,11 @@
                 <small style="display:block; margin-top:6px; color:var(--muted)">
                         [ismei kuch toh geet bg mei dalne k mann h. but samajh nhi paaye ki old is gold mei se daale ki indie kuch. ab tumse puch ke hi daaldengey! xD]<br><br>
                         EDIT : geet added, will change if you want me to! bas yeh gaana acha laga iss liye daale. funz mei.<br><br>
-                        EDIT @ 23/10/2025 : puja k din k tasveer synced. blue kurti mei bittz = <333 (": (sundar lag rhi. log jaan waan mangte hongey. ham apna aankh tumko dete h xD. phir dekho (": ). {funz xD}<br><br>
-                        EDIT @ 25/10/2025 : nahaye khaye k tasveers. bahut pyaari and sundar lag rhi ho. bahutte jyada <3.
+                        EDIT @ 23/10/2025 : puja k din k tasveer synced. blue kurti mei bittz = &lt;333 (": (sundar lag rhi. log jaan waan mangte hongey. ham apna aankh tumko dete h xD. phir dekho (": ). {funz xD}<br><br>
+                        EDIT @ 25/10/2025 : nahaye khaye k tasveers. bahut pyaari and sundar lag rhi ho. bahutte jyada &lt;3.
                 </small>
                 </div>`
-        }
+      }
     };
 
     function renderSadGallery(){
@@ -313,27 +338,19 @@
       gal.innerHTML = '';
       SAD_IMAGES.forEach(src => {
         const img = new Image();
-        img.src = src;
         img.alt = 'memory photo';
+        loadWithFallback(img, src);   // fallback-aware
         gal.appendChild(img);
       });
     }
 
     function wireSadVideo(){
-        const v = document.getElementById('sadVid');
-        if(!v) return;
-
-        // sound first, then load+play
-        v.muted = false;
-        v.volume = 1;
-        v.setAttribute('playsinline','');
-        v.setAttribute('webkit-playsinline','');
-
-        v.pause();
-        v.currentTime = 0;
-        v.load();
-        // call play right after render (user clicked the mood)
-        setTimeout(() => { v.play().catch(()=>{}); }, 0);
+      const v = document.getElementById('sadVid');
+      if(!v) return;
+      v.muted = false; v.volume = 1;
+      v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline','');
+      v.pause(); v.currentTime = 0; v.load();
+      setTimeout(() => { v.play().catch(()=>{}); }, 0);
     }
 
     function showMood(key){
@@ -364,9 +381,10 @@
         initSlides();
         if(!SS.timer){ toggleSlidePlay(); }
         const b = document.getElementById('ssPlayBtn'); if(b) b.textContent = 'pause';
-        startSlideAudio(); // start music with slideshow
-        } 
-        else {stopSlideAudio();}  // ensure music stops if user switches moods
+        startSlideAudio();
+      } else {
+        stopSlideAudio();
+      }
 
       if(RESTORE_LAST){ localStorage.setItem('lastMood', key); }
       setTimeout(()=>moodOut.scrollIntoView({behavior:'smooth', block:'start'}), 50);
@@ -376,7 +394,6 @@
       btn.addEventListener('click', ()=> showMood(btn.dataset.key));
     });
 
-    // restore last mood (disabled by default)
     if(RESTORE_LAST){
       const lastMood = localStorage.getItem('lastMood');
       if(lastMood){ showMood(lastMood); }
@@ -448,39 +465,28 @@
     })();
 
     // proceed router for YES button (opens full-screen video)
-    function proceedAction(){
-      openPlayer();
-    }
+    function proceedAction(){ openPlayer(); }
 
     // full-screen player helpers
     function openPlayer(){
-    const ov = document.getElementById('player');
-    const v  = document.getElementById('fullVid');
-    if(!ov || !v) return;
+      const ov = document.getElementById('player');
+      const v  = document.getElementById('fullVid');
+      if(!ov || !v) return;
 
-    stopSlideAudio();
-    // STOP any mood videos currently playing (e.g., sad video)
-    document.querySelectorAll('video').forEach(videoEl => {
-        if (videoEl !== v) {
-        videoEl.pause();
-        videoEl.currentTime = 0;
-        }
-    });
+      stopSlideAudio();
 
-    ov.classList.add('show');
+      // STOP any mood videos currently playing (e.g., sad video)
+      document.querySelectorAll('video').forEach(videoEl => {
+        if (videoEl !== v) { videoEl.pause(); videoEl.currentTime = 0; }
+      });
 
-    // Ensure sound is ON
-    v.pause();
-    v.muted = false; 
-    v.volume = 1;
-    v.currentTime = 0;
+      ov.classList.add('show');
 
-    const p = v.play();
-    if(p && p.catch) p.catch(()=>{});
+      v.pause(); v.muted = false; v.volume = 1; v.currentTime = 0;
+      const p = v.play(); if(p && p.catch) p.catch(()=>{});
 
-    window.scrollTo({top: 0, behavior: 'auto'});
+      window.scrollTo({top: 0, behavior: 'auto'});
     }
-
 
     function closePlayer(){
       const ov = document.getElementById('player');
@@ -489,8 +495,7 @@
       v.pause();
       ov.classList.remove('show');
 
-    // also stop slideshow music
-    stopSlideAudio();
+      stopSlideAudio();
 
       // Reset mood area
       moodOut.classList.remove('show');
@@ -522,26 +527,29 @@
         img.style.display='none';
         return;
       }
-      img.src = SS.list[SS.idx];
       img.style.display='block';
       if(empty) empty.style.display='none';
+
+      // fade-in + fallback
+      img.classList.remove('loaded');
+      img.onload = () => img.classList.add('loaded');
+      loadWithFallback(img, SS.list[SS.idx]);
     }
 
     function nextSlide(){ if(!SS.list.length) return; SS.idx = (SS.idx+1)%SS.list.length; renderSlide(); }
+
     function toggleSlidePlay(){
       const btn = document.getElementById('ssPlayBtn');
       const a = document.getElementById('ssAudio');
       if(SS.timer){
-        clearInterval(SS.timer);
-        SS.timer=null;
-        if(a) a.pause();                 //  pause music when slideshow pauses
+        clearInterval(SS.timer); SS.timer=null;
+        if(a) a.pause();
         if(btn) btn.textContent='play';
       } else {
         if(!SS.list.length) return;
         SS.timer = setInterval(nextSlide, 2200);
         if(a){
-      // try to resume; if blocked, user will see controls for the audio if you add them
-            const p = a.play(); if(p && p.catch) p.catch(()=>{});
+          const p = a.play(); if(p && p.catch) p.catch(()=>{});
         }
         if(btn) btn.textContent='pause';
       }
@@ -577,32 +585,27 @@
     }
 
     function startSlideAudio(){
-  const a = document.getElementById('ssAudio');
-  if(!a) return;
-  try {
-    a.loop = true;
-    a.volume = 1;
-    a.muted = false;
-    // calling play() after a user click (opening the mood) satisfies iOS/Android policies
-    const p = a.play();
-    let vol = 0;
-    a.volume = 0;
-    const id = setInterval(()=>{
-    vol += 0.1;
-    a.volume = Math.min(1, vol);
-    if(vol >= 1) clearInterval(id);
-    }, 120);
+      const a = document.getElementById('ssAudio');
+      if(!a) return;
+      try {
+        a.loop = true;
+        a.muted = false;
+        let vol = 0;
+        a.volume = 0;
+        const p = a.play();
+        const id = setInterval(()=>{
+          vol += 0.1; a.volume = Math.min(1, vol);
+          if(vol >= 1) clearInterval(id);
+        }, 120);
+        if(p && p.catch) p.catch(()=>{});
+      } catch(e){}
+    }
 
-    if(p && p.catch) p.catch(()=>{}); // ignore if blocked
-  } catch(e){}
-}
-
-function stopSlideAudio(){
-  const a = document.getElementById('ssAudio');
-  if(!a) return;
-  try { a.pause(); a.currentTime = 0; } catch(e){}
-}
-
+    function stopSlideAudio(){
+      const a = document.getElementById('ssAudio');
+      if(!a) return;
+      try { a.pause(); a.currentTime = 0; } catch(e){}
+    }
   </script>
   <audio id="ssAudio" src="assets/geetPriti.mp3" preload="auto"></audio>
 </body>
